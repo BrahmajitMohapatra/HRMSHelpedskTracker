@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HRMS Helpdesk — Ticket Tracker</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+:root{--bg:#f4f5f7;--surface:#fff;--surface2:#f8f9fb;--border:#e3e6ea;--border2:#d0d4da;
+  --text-primary:#1a1d23;--text-secondary:#5a6070;--text-muted:#8a93a2;
+  --accent:#c0392b;--accent-soft:#fdf2f1;--blue:#2563eb;--blue-soft:#eff6ff;
+  --green:#16a34a;--amber:#d97706;--amber-soft:#fffbeb;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.06);--shadow:0 4px 12px rgba(0,0,0,.08),0 1px 3px rgba(0,0,0,.05);
+  --radius:10px;--radius-sm:6px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text-primary);font-size:14px;line-height:1.5;min-height:100vh}
+
+/* HEADER */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 22px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:var(--shadow-sm)}
+.header-left{display:flex;align-items:center;gap:12px}
+.logo-badge{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#c0392b,#e74c3c);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff}
+.header-title{font-weight:700;font-size:15px}.header-subtitle{font-size:11px;color:var(--text-muted);margin-top:1px}
+.header-right{display:flex;align-items:center;gap:8px}
+.ticket-badge{background:var(--accent);color:#fff;font-weight:700;font-size:12px;padding:3px 11px;border-radius:20px}
+.date-chip{font-size:11px;color:var(--text-muted);background:var(--bg);padding:4px 9px;border-radius:6px;border:1px solid var(--border)}
+.api-key-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:var(--radius-sm);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border2);background:var(--surface);color:var(--text-secondary);transition:all .15s}
+.api-key-btn:hover{border-color:var(--blue);color:var(--blue)}.api-key-btn.key-set{border-color:#16a34a;color:#16a34a;background:#f0fdf4}
+.prov-chip{font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;text-transform:uppercase}
+.chip-gemini{background:#e8f5e9;color:#2e7d32}.chip-groq{background:#fff3e0;color:#e65100}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:var(--surface);border-radius:14px;padding:26px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.22);max-height:92vh;overflow-y:auto}
+.api-modal{width:520px}
+.api-modal h2{font-size:16px;font-weight:700;margin-bottom:5px}
+.api-modal-desc{font-size:12px;color:var(--text-muted);margin-bottom:18px;line-height:1.6}
+.provider-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.provider-card{border:2px solid var(--border2);border-radius:10px;padding:13px 15px;cursor:pointer;transition:all .15s;background:var(--surface2);display:flex;align-items:center;gap:11px}
+.provider-card:hover{border-color:var(--blue);background:var(--blue-soft)}
+.provider-card.selected{border-color:var(--blue);background:var(--blue-soft);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.prov-logo{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.prov-name{font-size:13px;font-weight:700;line-height:1.2}.prov-sub{font-size:10px;color:var(--text-muted);margin-top:2px}
+.key-section{display:none}.key-section.visible{display:block}
+.key-section label{font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:5px}
+.key-section input{width:100%;font-family:'DM Mono',monospace;font-size:13px;padding:9px 12px;border:1.5px solid var(--border2);border-radius:var(--radius-sm);outline:none;margin-bottom:8px}
+.key-section input:focus{border-color:var(--blue)}
+.key-note{font-size:11px;color:var(--text-muted);background:var(--bg);padding:9px 12px;border-radius:6px;margin-bottom:16px;line-height:1.7}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius-sm);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s}
+.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:#1d4ed8}
+.btn-outline{background:var(--surface);color:var(--text-secondary);border:1px solid var(--border2)}.btn-outline:hover{background:var(--bg)}
+.btn-sm{padding:5px 10px;font-size:12px}
+
+/* TOOLBAR */
+.toolbar{background:var(--surface);border-bottom:1px solid var(--border);padding:9px 22px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.file-info{font-size:12px;color:var(--text-muted);padding:6px 12px;background:var(--bg);border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;gap:6px;flex:1;min-width:0;overflow:hidden}
+.file-info span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.status-ok{color:var(--green);font-weight:600}
+
+/* TABS */
+.tabs{background:var(--surface);padding:0 22px;border-bottom:1px solid var(--border);display:flex}
+.tab{padding:11px 16px;font-size:13px;font-weight:500;color:var(--text-muted);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;align-items:center;gap:6px;transition:all .15s}
+.tab:hover{color:var(--text-secondary)}.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.badge-ai{background:#ede9fe;color:#7c3aed;font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;text-transform:uppercase}
+
+/* FILTERS */
+.filters{background:var(--surface);padding:8px 22px;border-bottom:1px solid var(--border);display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.filter-group{display:flex;align-items:center;gap:4px}
+.filter-label{font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+select,.search-input{font-family:inherit;font-size:12px;border:1px solid var(--border2);border-radius:var(--radius-sm);padding:5px 7px;background:var(--surface);color:var(--text-primary);outline:none;transition:border .15s}
+select:focus,.search-input:focus{border-color:var(--blue)}
+.search-wrap{position:relative}
+.search-wrap svg{position:absolute;left:7px;top:50%;transform:translateY(-50%);color:var(--text-muted)}
+.search-input{padding-left:25px;width:170px}
+.filter-gap{margin-left:auto;font-size:11px;color:var(--text-muted);white-space:nowrap}
+.clear-btn{font-size:11px;color:var(--accent);cursor:pointer;background:none;border:none;font-family:inherit;font-weight:600;padding:3px 6px;border-radius:4px}
+.clear-btn:hover{background:var(--accent-soft)}
+.active-chips{display:flex;flex-wrap:wrap;gap:5px;padding:6px 22px;background:#fffbeb;border-bottom:1px solid #fde68a}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:#fff;border:1px solid #fde68a;border-radius:10px;font-size:11px;font-weight:600;color:#92400e}
+.chip-x{cursor:pointer;opacity:.6;font-size:13px;line-height:1}.chip-x:hover{opacity:1}
+
+/* MAIN */
+.main{padding:18px 22px}
+.section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:11px;display:flex;align-items:center;gap:8px}
+.section-title span{flex:1}.section-title small{font-size:11px;font-weight:400;text-transform:none;letter-spacing:0}
+
+/* CAT CARDS */
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px;margin-bottom:24px}
+.cat-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:12px 14px 10px;cursor:pointer;transition:all .15s}
+.cat-card:hover{box-shadow:var(--shadow);transform:translateY(-1px)}.cat-card.cat-active{box-shadow:0 0 0 2px rgba(0,0,0,.1)}
+.cat-card.all-card{border-color:var(--accent)}.cat-count{font-size:24px;font-weight:700;line-height:1.1;margin-bottom:2px}
+.cat-name{font-size:11px;color:var(--text-secondary);font-weight:500;line-height:1.3}
+.cat-bar{height:3px;border-radius:2px;margin-top:9px;background:var(--border);overflow:hidden}
+.cat-bar-fill{height:100%;border-radius:2px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+
+/* SUBCAT CARDS */
+.subcat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:11px;margin-bottom:24px}
+.subcat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;cursor:pointer;transition:all .15s}
+.subcat-card:hover{box-shadow:var(--shadow);transform:translateY(-1px)}.subcat-card.subcat-active{border-color:var(--blue);box-shadow:0 0 0 2px rgba(37,99,235,.1)}
+.subcat-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px}
+.subcat-name{font-size:12px;font-weight:600;line-height:1.3}.subcat-cat{font-size:10px;font-weight:500;margin-top:1px}
+.subcat-count{font-size:19px;font-weight:700;flex-shrink:0;margin-left:8px}
+.subcat-meta{display:flex;gap:8px;margin-top:5px;font-size:10px;color:var(--text-muted);flex-wrap:wrap}
+.subcat-meta .pct{font-weight:700}.subcat-meta .aged{color:var(--accent);font-weight:700}
+.subcat-bar{height:3px;border-radius:2px;background:var(--border);margin-top:7px;overflow:hidden}
+.subcat-bar-fill{height:100%;border-radius:2px}
+.ag-tier-row{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.ag-tier-chip{font-size:9px;font-weight:700;padding:2px 6px;border-radius:5px;letter-spacing:.3px}
+.tier-l1{background:#dbeafe;color:#1d4ed8}.tier-l2{background:#dcfce7;color:#15803d}
+.tier-l3{background:#f3e8ff;color:#7c3aed}.tier-ee{background:#fef9c3;color:#a16207}.tier-other{background:#f1f5f9;color:#475569}
+
+/* STATUS QUICK ANALYSIS */
+.status-analysis{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;margin-bottom:20px}
+.sa-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.sa-title{font-size:12px;font-weight:700;color:var(--text-primary)}
+.sa-sub{font-size:11px;color:var(--text-muted)}
+.sa-cards{display:flex;gap:10px;flex-wrap:wrap}
+.sa-card{flex:1;min-width:110px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;text-align:center;cursor:pointer;transition:all .15s}
+.sa-card:hover{box-shadow:var(--shadow);transform:translateY(-1px)}
+.sa-card.sa-active{border-color:var(--blue);background:var(--blue-soft)}
+.sa-count{font-size:22px;font-weight:700;line-height:1.1}
+.sa-label{font-size:11px;color:var(--text-muted);margin-top:2px}
+.sa-pct{font-size:10px;color:var(--text-muted);margin-top:1px}
+.sa-bar-row{display:flex;height:5px;border-radius:3px;overflow:hidden;margin-top:10px;gap:2px}
+.sa-bar-seg{height:100%;border-radius:2px;transition:width .4s}
+
+/* COLOR CLASSES */
+.cc-red{color:#c0392b}.cf-red{background:#c0392b}.cc-blue{color:#2563eb}.cf-blue{background:#2563eb}
+.cc-purple{color:#7c3aed}.cf-purple{background:#7c3aed}.cc-amber{color:#d97706}.cf-amber{background:#d97706}
+.cc-teal{color:#0891b2}.cf-teal{background:#0891b2}.cc-green{color:#16a34a}.cf-green{background:#16a34a}
+.cc-pink{color:#db2777}.cf-pink{background:#db2777}.cc-slate{color:#475569}.cf-slate{background:#475569}
+.cc-orange{color:#ea580c}.cf-orange{background:#ea580c}.cc-indigo{color:#4f46e5}.cf-indigo{background:#4f46e5}
+.cc-cyan{color:#0e7490}.cf-cyan{background:#0e7490}.cc-lime{color:#65a30d}.cf-lime{background:#65a30d}
+
+/* TICKET TABLE */
+.ticket-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:auto;margin-bottom:24px}
+.ticket-table{width:100%;border-collapse:collapse;min-width:1050px}
+.ticket-table th{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);background:var(--surface2);padding:9px 11px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;user-select:none}
+.ticket-table th.sortable{cursor:pointer}.ticket-table th.sortable:hover{color:var(--blue);background:#f0f4ff}
+.sort-icon{display:inline-block;margin-left:3px;opacity:.35;font-size:10px}
+th.sort-asc .sort-icon,th.sort-desc .sort-icon{opacity:1;color:var(--blue)}
+.ticket-table td{padding:7px 11px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:top}
+.ticket-table tr:last-child td{border-bottom:none}.ticket-table tr:hover td{background:var(--bg)}
+.td-req{font-family:'DM Mono',monospace;font-size:10px;color:var(--text-muted)}
+.td-clip{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.td-muted{color:var(--text-muted)}
+.status-pill{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:8px;text-transform:uppercase;letter-spacing:.3px}
+.s-open{background:#dbeafe;color:#1d4ed8}.s-closed{background:#dcfce7;color:#15803d}
+.s-pending{background:#fef9c3;color:#a16207}.s-resolved{background:#f0fdf4;color:#16a34a}.s-default{background:var(--bg);color:var(--text-muted)}
+.priority-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px}
+.p-high{background:#ef4444}.p-medium{background:#f59e0b}.p-low{background:#22c55e}.p-critical{background:#7c3aed}
+.pagination{display:flex;align-items:center;justify-content:flex-end;gap:5px;padding:9px 13px;border-top:1px solid var(--border)}
+.page-btn{font-family:inherit;font-size:12px;padding:4px 9px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer}
+.page-btn:hover{background:var(--bg)}.page-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.page-info{font-size:12px;color:var(--text-muted);margin-right:8px}.no-data{text-align:center;padding:40px;color:var(--text-muted)}
+
+/* AGEING */
+.ageing-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:auto;margin-bottom:24px}
+.ageing-table{width:100%;border-collapse:collapse;min-width:860px}
+.ageing-table th{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);background:var(--surface2);padding:9px 12px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
+.ageing-table th:hover{color:var(--blue);background:#f0f4ff}
+.ageing-table td{padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px}
+.ageing-table tr:last-child td{border-bottom:none}.ageing-table tr:hover td{background:var(--bg)}
+.ageing-table tfoot tr{background:var(--surface2)}
+.ageing-table tfoot td{font-weight:700;border-top:2px solid var(--border2);padding:9px 12px;font-size:12px}
+.age-pill{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:8px;transition:all .12s}
+.age-ok{background:#dcfce7;color:#15803d}.age-warn{background:#fef9c3;color:#a16207}
+.age-bad{background:#fee2e2;color:#dc2626}.age-critical{background:#fce7f3;color:#be185d}
+.age-total{background:#e2e8f0;color:#334155;font-size:11px;font-weight:700;padding:3px 9px;border-radius:8px;display:inline-block}
+.age-cell{cursor:pointer}.age-cell:hover .age-pill,.age-cell:hover .age-total{box-shadow:0 0 0 2px rgba(0,0,0,.15);transform:scale(1.08)}
+
+/* TICKET DRILL-DOWN PANEL (Ageing) */
+.age-detail-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:24px}
+.adp-header{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--surface2);border-bottom:1px solid var(--border)}
+.adp-title{font-size:13px;font-weight:700;flex:1}
+.adp-close{background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:18px;line-height:1;padding:0 4px}
+.adp-close:hover{color:var(--text-primary)}
+.adp-tbl-wrap{overflow:auto;max-height:400px}
+.adp-tbl{width:100%;border-collapse:collapse;min-width:800px}
+.adp-tbl th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);background:var(--surface2);padding:8px 11px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:1}
+.adp-tbl td{padding:7px 11px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:top}
+.adp-tbl tr:last-child td{border-bottom:none}.adp-tbl tr:hover td{background:var(--bg)}
+
+/* AI PANEL */
+.ai-panel{background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:var(--radius);padding:15px 18px;margin-bottom:18px;display:flex;align-items:center;gap:14px}
+.ai-icon{font-size:22px}.ai-text{flex:1}
+.ai-text strong{color:#fff;font-size:13px;display:block;margin-bottom:2px}.ai-text span{color:#94a3b8;font-size:12px}
+.ai-prog-wrap{width:130px}
+.prog-bar-bg{height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;margin-top:8px}
+.prog-bar-fill{height:100%;background:linear-gradient(90deg,#3b82f6,#8b5cf6);border-radius:2px;transition:width .3s}
+.prog-label{color:#94a3b8;font-size:11px;text-align:right;margin-top:3px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}.pulsing{animation:pulse 1.5s ease-in-out infinite}
+
+/* RESOLUTION */
+.res-filter-bar{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.res-filter-bar .filter-label{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px}
+.ag-nav-wrap{margin-bottom:18px}
+.ag-pills{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:4px}
+.ag-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid;background:var(--surface);transition:opacity .15s;text-decoration:none}
+.ag-pill:hover{opacity:.75}
+.ag-pill-ct{font-size:10px;font-weight:700;padding:1px 5px;border-radius:8px;background:rgba(0,0,0,.07)}
+.ag-section{margin-bottom:26px}
+.ag-section-hdr{display:flex;align-items:center;gap:11px;padding:11px 15px;margin-bottom:11px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:background .15s}
+.ag-section-hdr:hover{background:var(--bg)}
+.ag-section-icon{width:31px;height:31px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.ag-section-info{flex:1}.ag-section-name{font-size:13px;font-weight:700}.ag-section-meta{font-size:11px;color:var(--text-muted);margin-top:1px}
+.ag-stats{display:flex;gap:14px}.ag-stat{text-align:center}
+.ag-stat-val{font-size:16px;font-weight:700;line-height:1}.ag-stat-lbl{font-size:10px;color:var(--text-muted);margin-top:2px;text-transform:uppercase;letter-spacing:.4px}
+.ag-chev{color:var(--text-muted);transition:transform .2s;flex-shrink:0}.ag-chev.open{transform:rotate(180deg)}
+.ag-body{display:none}.ag-body.open{display:block}
+.buckets-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-bottom:8px}
+
+/* BUCKET CARD */
+.bucket-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:all .15s}
+.bucket-card:hover{box-shadow:var(--shadow)}
+.bucket-hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:13px 14px 10px}
+.bucket-title{font-size:13px;font-weight:700}
+.bucket-ct{font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--bg);color:var(--text-secondary);white-space:nowrap;flex-shrink:0}
+.bucket-tags{display:flex;flex-wrap:wrap;gap:4px;padding:0 14px 8px}
+.bucket-tag{font-size:10px;padding:2px 6px;border-radius:4px;background:var(--bg);color:var(--text-secondary);border:1px solid var(--border)}
+.bucket-ages{display:flex;gap:5px;flex-wrap:wrap;padding:0 14px 10px}
+.bucket-age-chip{font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px}
+
+/* AI INSIGHTS INSIDE BUCKET */
+.ai-insights{border-top:1px solid var(--border);background:var(--surface2)}
+.ai-insights-header{padding:10px 14px 6px;display:flex;align-items:center;gap:6px}
+.ai-insights-label{font-size:11px;font-weight:700;color:#7c3aed}
+.ai-issue-list{list-style:none;padding:0 14px 0}
+.ai-issue-item{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;border-radius:4px;margin:0 -4px;padding-left:4px;padding-right:4px}
+.ai-issue-item:last-child{border-bottom:none}
+.ai-issue-item:hover{background:#f0f4ff}
+.ai-issue-item.active{background:#eff6ff}
+.ai-issue-text{font-size:12px;color:var(--text-primary);flex:1;line-height:1.4}
+.ai-issue-count{font-size:11px;font-weight:700;color:#fff;background:#7c3aed;padding:1px 7px;border-radius:10px;white-space:nowrap;margin-left:8px;flex-shrink:0}
+.ai-issue-arrow{font-size:10px;color:var(--text-muted);margin-left:6px;transition:transform .15s}
+.ai-issue-item.active .ai-issue-arrow{transform:rotate(90deg);color:var(--blue)}
+.ai-recommendation{margin:8px 14px 12px;padding:8px 10px;background:#f5f3ff;border-radius:6px;border-left:3px solid #7c3aed;font-size:11px;color:#4c1d95;line-height:1.6}
+.ai-recommendation strong{display:block;margin-bottom:3px;font-size:11px}
+
+/* ISSUE DRILL-DOWN INLINE TABLE */
+.issue-drill{display:none;border-top:1px solid var(--border);background:var(--surface)}
+.issue-drill.open{display:block}
+.issue-drill-hdr{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;background:#f5f3ff;border-bottom:1px solid var(--border)}
+.issue-drill-title{font-size:12px;font-weight:600;color:#4c1d95}
+.issue-drill-close{background:none;border:none;cursor:pointer;color:#7c3aed;font-size:14px;font-weight:700}
+.issue-drill-tbl-wrap{overflow:auto;max-height:320px}
+.issue-drill-tbl{width:100%;border-collapse:collapse;min-width:700px}
+.issue-drill-tbl th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);background:#faf5ff;padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:1}
+.issue-drill-tbl td{padding:6px 10px;border-bottom:1px solid var(--border);font-size:11px;vertical-align:top}
+.issue-drill-tbl tr:last-child td{border-bottom:none}.issue-drill-tbl tr:hover td{background:#faf5ff}
+.bucket-res-loading{padding:14px;font-size:12px;color:var(--text-muted);font-style:italic}
+
+.no-ag-note{background:var(--amber-soft);border:1px solid #fde68a;border-radius:var(--radius);padding:11px 15px;margin-bottom:14px;font-size:12px;color:#92400e;display:flex;align-items:center;gap:8px}
+.api-prompt-box{background:var(--amber-soft);border:1px solid #fde68a;border-radius:var(--radius);padding:24px;text-align:center;margin-bottom:20px}
+.api-prompt-box .icon{font-size:32px;margin-bottom:10px}.api-prompt-box h3{font-size:15px;font-weight:700;margin-bottom:6px}
+.api-prompt-box p{font-size:13px;color:#92400e;margin-bottom:16px}
+
+/* EMPTY */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 24px;text-align:center}
+.empty-icon{font-size:48px;margin-bottom:16px}.empty-title{font-size:18px;font-weight:700;margin-bottom:8px}
+.empty-sub{font-size:13px;color:var(--text-muted);margin-bottom:24px;max-width:400px;line-height:1.6}
+.drop-zone{border:2px dashed var(--border2);border-radius:12px;padding:30px 44px;cursor:pointer;transition:all .2s;background:var(--surface2)}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--blue);background:var(--blue-soft)}
+.drop-zone input[type=file]{display:none}.drop-text{font-size:12px;color:var(--text-muted);margin-top:6px}
+.format-note{margin-top:18px;padding:13px 17px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--text-secondary);text-align:left;max-width:560px}
+.format-note code{font-family:'DM Mono',monospace;font-size:11px;background:var(--bg);padding:1px 5px;border-radius:3px;border:1px solid var(--border)}
+#csvInput{display:none}
+</style>
+</head>
+<body>
+
+<!-- ══ AI PROVIDER MODAL ════════════════════════════════════════════ -->
+<div class="modal-overlay" id="apiModal" style="display:none" onclick="if(event.target===this)closeApiModal()">
+  <div class="modal api-modal">
+    <h2>🤖 AI Provider Setup</h2>
+    <p class="api-modal-desc">Choose your AI provider and enter your API key to enable Resolution Bucket analysis. Keys are stored in memory only.</p>
+    <div class="provider-grid">
+      <div class="provider-card selected" id="pcGemini" onclick="selectProvider('gemini')">
+        <div class="prov-logo" style="background:#e8f5e9">🌐</div>
+        <div><div class="prov-name">Google Gemini</div><div class="prov-sub">gemini-2.0-flash · Free tier available</div></div>
+      </div>
+      <div class="provider-card" id="pcGroq" onclick="selectProvider('groq')">
+        <div class="prov-logo" style="background:#fff3e0">⚡</div>
+        <div><div class="prov-name">Groq</div><div class="prov-sub">llama-3.3-70b · Ultra-fast inference</div></div>
+      </div>
+    </div>
+    <div class="key-section visible" id="ksGemini">
+      <label>Gemini API Key</label>
+      <input type="password" id="geminiKey" placeholder="AIzaSy…" autocomplete="off">
+      <div class="key-note">Get your key at <strong>aistudio.google.com → Get API key</strong><br>Free tier: 15 req/min · 1M tokens/day · No billing required</div>
+    </div>
+    <div class="key-section" id="ksGroq">
+      <label>Groq API Key</label>
+      <input type="password" id="groqKey" placeholder="gsk_…" autocomplete="off">
+      <div class="key-note">Get your key at <strong>console.groq.com → API Keys</strong><br>Free tier: 6,000 req/day · Fastest open-source models</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeApiModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveApiKey()">✓ Save &amp; Enable AI</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ HEADER ══════════════════════════════════════════════════════ -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo-badge">SBI</div>
+    <div><div class="header-title">HRMS Helpdesk — Ticket Tracker</div><div class="header-subtitle" id="fileSubtitle">No file loaded</div></div>
+  </div>
+  <div class="header-right">
+    <button class="api-key-btn" id="apiKeyBtn" onclick="openApiModal()">🤖 <span id="apiKeyLabel">Set AI Provider</span></button>
+    <div class="date-chip">Loaded: <span id="loadedDate">—</span></div>
+    <div class="ticket-badge" id="ticketBadge">0 tickets</div>
+  </div>
+</header>
+
+<!-- ══ TOOLBAR ═════════════════════════════════════════════════════ -->
+<div class="toolbar">
+  <button class="btn btn-outline" onclick="document.getElementById('csvInput').click()">
+    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7M16 3H8a2 2 0 00-2 2v0h12v0a2 2 0 00-2-2z"/></svg>
+    Load Data File
+  </button>
+  <button class="btn btn-primary" onclick="document.getElementById('csvInput').click()">
+    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+    Upload CSV
+  </button>
+  <input type="file" id="csvInput" accept=".csv" onchange="handleFileUpload(event)">
+  <div class="file-info">
+    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+    <span id="fileInfoText">Columns: Request No., Employee Name, Category, Sub Category, Subject, Description, Raised Date, Priority, Status, Circle, Assignment Group, Last Updated By</span>
+    <span id="fileOkText"></span>
+  </div>
+</div>
+
+<!-- ══ TABS ════════════════════════════════════════════════════════ -->
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('ticket')" id="tab-ticket">
+    <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h4"/></svg>
+    Ticket View
+  </button>
+  <button class="tab" onclick="switchTab('ageing')" id="tab-ageing">
+    <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    Ageing Analysis
+  </button>
+  <button class="tab" onclick="switchTab('resolution')" id="tab-resolution">
+    <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    Resolution Buckets <span class="badge-ai">AI</span>
+  </button>
+</div>
+
+<!-- ══ FILTERS ══════════════════════════════════════════════════════ -->
+<div class="filters">
+  <div class="search-wrap">
+    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input class="search-input" type="text" placeholder="Search tickets…" id="searchInput" oninput="applyFilters()">
+  </div>
+  <div class="filter-group"><span class="filter-label">Cat</span><select id="filterCat" onchange="applyFilters()"><option value="">All categories</option></select></div>
+  <div class="filter-group"><span class="filter-label">Sub-Cat</span><select id="filterSub" onchange="applyFilters()"><option value="">All sub-categories</option></select></div>
+  <div class="filter-group"><span class="filter-label">Assign.Grp</span><select id="filterAG" onchange="applyFilters()"><option value="">All groups</option></select></div>
+  <div class="filter-group"><span class="filter-label">Status</span><select id="filterStatus" onchange="applyFilters()"><option value="">All statuses</option></select></div>
+  <div class="filter-group"><span class="filter-label">Priority</span><select id="filterPri" onchange="applyFilters()"><option value="">All priorities</option></select></div>
+  <div class="filter-group"><span class="filter-label">Circle</span><select id="filterCircle" onchange="applyFilters()"><option value="">All circles</option></select></div>
+  <button class="clear-btn" onclick="clearAllFilters()">✕ Clear</button>
+  <div class="filter-gap" id="showingCount">Showing 0 of 0</div>
+</div>
+<div id="activeChips" class="active-chips" style="display:none"></div>
+
+<!-- ══ MAIN ════════════════════════════════════════════════════════ -->
+<div class="main">
+
+  <!-- Empty -->
+  <div id="emptyState" class="empty-state">
+    <div class="empty-icon">📋</div>
+    <div class="empty-title">Upload your HRMS Helpdesk CSV</div>
+    <div class="empty-sub">Auto-analyse categories, sub-categories, resolution buckets, and ageing of open tickets.</div>
+    <label class="drop-zone" id="dropZone">
+      <input type="file" accept=".csv" onchange="handleFileUpload(event)">
+      <div style="font-size:32px">📂</div>
+      <div style="font-weight:600;margin-top:8px">Drop CSV here or click to browse</div>
+      <div class="drop-text">Supports .csv with standard HRMS helpdesk columns</div>
+    </label>
+    <div class="format-note">
+      <strong>Expected columns (case-insensitive):</strong><br>
+      <code>Request No.</code> <code>Employee Name</code> <code>Category</code> <code>Sub Category</code>
+      <code>Subject</code> <code>Description</code> <code>Raised Date</code> <code>Priority</code>
+      <code>Status</code> <code>Circle</code> <code>Assignment Group</code> <code>Last Updated By</code>
+    </div>
+  </div>
+
+  <!-- Ticket View -->
+  <div id="ticketView" style="display:none">
+    <div class="section-title"><span>Categories</span></div>
+    <div class="cat-grid" id="catGrid"></div>
+    <div class="section-title">
+      <span>Sub-Category Breakdown — <span id="subcatCatLabel">All Categories</span></span>
+      <small id="subcatCount"></small>
+    </div>
+    <div class="subcat-grid" id="subcatGrid"></div>
+    <!-- Status Quick Analysis (shown after sub-cat selected) -->
+    <div id="statusAnalysis" style="display:none"></div>
+    <div class="section-title"><span>Tickets</span> <small id="tblCount"></small></div>
+    <div class="ticket-table-wrap" id="tblWrap">
+      <table class="ticket-table">
+        <thead><tr>
+          <th>Req No</th><th>Employee</th>
+          <th class="sortable" data-col="category" onclick="sortTable('category')">Category <span class="sort-icon">⇅</span></th>
+          <th class="sortable" data-col="subCategory" onclick="sortTable('subCategory')">Sub Category <span class="sort-icon">⇅</span></th>
+          <th class="sortable" data-col="assignmentGroup" onclick="sortTable('assignmentGroup')">Assignment Group <span class="sort-icon">⇅</span></th>
+          <th>Subject</th><th>Description</th><th>Raised Date</th>
+          <th class="sortable" data-col="ageDays" onclick="sortTable('ageDays')">Age <span class="sort-icon">⇅</span></th>
+          <th class="sortable" data-col="priority" onclick="sortTable('priority')">Priority <span class="sort-icon">⇅</span></th>
+          <th class="sortable" data-col="status" onclick="sortTable('status')">Status <span class="sort-icon">⇅</span></th>
+          <th class="sortable" data-col="lastUpdatedBy" onclick="sortTable('lastUpdatedBy')">Last Updated By <span class="sort-icon">⇅</span></th>
+        </tr></thead>
+        <tbody id="tblBody"></tbody>
+      </table>
+      <div class="pagination" id="pagWrap"></div>
+    </div>
+  </div>
+
+  <!-- Ageing Tab -->
+  <div id="ageingView" style="display:none">
+    <div class="section-title"><span>Ageing Analysis</span> <small>Click any count to drill into ticket details</small></div>
+    <!-- Drill-down panel (inline) -->
+    <div id="ageDrillPanel" class="age-detail-panel" style="display:none">
+      <div class="adp-header">
+        <div class="adp-title" id="adpTitle">Ticket Details</div>
+        <div id="adpMeta" style="font-size:11px;color:var(--text-muted)"></div>
+        <button class="adp-close" onclick="closeAgeDrill()" title="Close">✕</button>
+      </div>
+      <div class="adp-tbl-wrap">
+        <table class="adp-tbl">
+          <thead><tr>
+            <th>Req No</th><th>Employee</th><th>Category</th><th>Sub Category</th>
+            <th>Assignment Group</th><th>Subject</th><th>Raised Date</th>
+            <th>Age</th><th>Priority</th><th>Status</th><th>Last Updated By</th>
+          </tr></thead>
+          <tbody id="adpBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="ageing-wrap">
+      <table class="ageing-table">
+        <thead><tr>
+          <th onclick="sortAge('cat')">Category <span class="sort-icon">⇅</span></th>
+          <th onclick="sortAge('sub')">Sub Category <span class="sort-icon">⇅</span></th>
+          <th onclick="sortAge('ag')">Assignment Group <span class="sort-icon">⇅</span></th>
+          <th onclick="sortAge('count')">Total <span class="sort-icon">⇅</span></th>
+          <th onclick="sortAge('b0')">0–7d <span class="sort-icon">⇅</span></th>
+          <th onclick="sortAge('b1')">8–15d <span class="sort-icon">⇅</span></th>
+          <th onclick="sortAge('b2')">16–30d <span class="sort-icon">⇅</span></th>
+          <th onclick="sortAge('b3')">&gt;30d <span class="sort-icon">⇅</span></th>
+          <th onclick="sortAge('avg')">Avg Age <span class="sort-icon">⇅</span></th>
+          <th onclick="sortAge('max')">Max Age <span class="sort-icon">⇅</span></th>
+        </tr></thead>
+        <tbody id="ageBody"></tbody>
+        <tfoot id="ageFoot"></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- Resolution Tab -->
+  <div id="resView" style="display:none">
+    <div class="res-filter-bar">
+      <span class="filter-label">Filter:</span>
+      <div class="filter-group"><span class="filter-label">Cat</span><select id="resCat" onchange="applyResFilter()"><option value="">All</option></select></div>
+      <div class="filter-group"><span class="filter-label">Sub-Cat</span><select id="resSub" onchange="applyResFilter()"><option value="">All</option></select></div>
+      <div class="filter-group"><span class="filter-label">Assign.Grp</span><select id="resAG" onchange="applyResFilter()"><option value="">All Groups</option></select></div>
+      <button class="btn btn-outline btn-sm" onclick="clearResFilter()">✕ Clear</button>
+      <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="regenBuckets()">🔄 Re-analyse</button>
+    </div>
+    <div class="ai-panel" id="aiPanel" style="display:none">
+      <div class="ai-icon">🤖</div>
+      <div class="ai-text">
+        <strong id="aiProviderLabel">AI Resolution Analysis</strong>
+        <span id="aiStatus">Analysing ticket subjects and descriptions…</span>
+      </div>
+      <div class="ai-prog-wrap">
+        <div class="prog-bar-bg"><div class="prog-bar-fill" id="aiBar" style="width:0%"></div></div>
+        <div class="prog-label" id="aiPct">0%</div>
+      </div>
+    </div>
+    <div id="agNav" class="ag-nav-wrap" style="display:none">
+      <div class="section-title"><span>Assignment Groups</span> <small id="agNavCt"></small></div>
+      <div id="agPills" class="ag-pills"></div>
+    </div>
+    <div id="bucketsWrap"></div>
+  </div>
+
+</div>
+
+<script>
+// ─── State ─────────────────────────────────────────────────────────────────
+let allTickets=[],filteredTickets=[];
+let currentTab='ticket',currentPage=1;
+const PAGE=50;
+let sortCol='',sortDir=1;
+let ageSortCol='count',ageSortDir=-1;
+let ageRows=[];
+let apiProvider='gemini',apiKey='';
+let bucketsBuilt=false;
+// Store parsed AI data per bucket for drill-down
+let bucketAIData={};  // key: "gi-bi" → {issues:[{label,count,keywords}], recommendation, tickets:[]}
+
+const today=new Date();today.setHours(0,0,0,0);
+const CAT_COLORS=['red','blue','purple','amber','teal','green','pink','slate','orange','indigo','cyan','lime'];
+const AG_ICONS=['👥','🛠','💼','📋','🔧','📊','🏢','⚙️','📌','🎯','🔑','📁'];
+const AG_COLORS=['#2563eb','#16a34a','#9333ea','#d97706','#0891b2','#dc2626','#7c3aed','#ea580c','#0284c7','#92400e'];
+const STATUS_COLORS={'open':'#2563eb','closed':'#16a34a','pending':'#d97706','resolved':'#16a34a','in progress':'#7c3aed','reopen':'#ea580c','wip':'#7c3aed'};
+const STATUS_BG={'open':'#dbeafe','closed':'#dcfce7','pending':'#fef9c3','resolved':'#f0fdf4','in progress':'#f3e8ff','reopen':'#ffedd5','wip':'#f3e8ff'};
+
+// ─── Provider ───────────────────────────────────────────────────────────────
+function selectProvider(p){
+  apiProvider=p;
+  document.getElementById('pcGemini').classList.toggle('selected',p==='gemini');
+  document.getElementById('pcGroq').classList.toggle('selected',p==='groq');
+  document.getElementById('ksGemini').classList.toggle('visible',p==='gemini');
+  document.getElementById('ksGroq').classList.toggle('visible',p==='groq');
+}
+function openApiModal(){
+  document.getElementById('geminiKey').value=apiProvider==='gemini'?apiKey:'';
+  document.getElementById('groqKey').value=apiProvider==='groq'?apiKey:'';
+  document.getElementById('apiModal').style.display='flex';
+}
+function closeApiModal(){document.getElementById('apiModal').style.display='none';}
+function saveApiKey(){
+  const k=(apiProvider==='gemini'?document.getElementById('geminiKey'):document.getElementById('groqKey')).value.trim();
+  if(!k){alert('Please enter a valid API key.');return;}
+  apiKey=k;
+  const pName=apiProvider==='gemini'?'Gemini':'Groq';
+  const cls=apiProvider==='gemini'?'chip-gemini':'chip-groq';
+  document.getElementById('apiKeyBtn').classList.add('key-set');
+  document.getElementById('apiKeyLabel').innerHTML=`✓ ${pName} <span class="prov-chip ${cls}">${pName}</span>`;
+  document.getElementById('aiProviderLabel').textContent=`AI Resolution Analysis · ${pName}`;
+  closeApiModal();
+}
+
+// ─── Upload / Parse ─────────────────────────────────────────────────────────
+function handleFileUpload(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{try{const t=parseCSV(ev.target.result);if(!t.length){alert('No tickets found.');return;}loadTickets(t,f.name);}catch(err){alert('Parse error: '+err.message);}};
+  r.readAsText(f);
+}
+
+function parseCSV(text){
+  const lines=text.split(/\r?\n/);if(lines.length<2)return[];
+  const hdrs=parseLine(lines[0]).map(h=>h.trim().toLowerCase().replace(/[^a-z0-9\s]/g,'').trim());
+  const FM={
+    requestNo:['request no','ticket no','ticket id','sr no','req no','id'],
+    empCode:['employee code','emp code'],empName:['employee name','emp name','name'],
+    category:['category','cat'],subCategory:['sub category','subcategory','sub cat','subcat'],
+    subject:['subject'],description:['description','desc','details'],
+    raisedDate:['raised date','date raised','created date','open date','date','raised on'],
+    priority:['priority'],status:['status'],circle:['circle','region','zone','location'],
+    assignmentGroup:['assignment group','assigned group','resolver group','support group','team','work group'],
+    lastUpdatedBy:['last updated by','updated by','modified by','last modified by','resolved by','updated by name','last update by']
+  };
+  const cm={};
+  hdrs.forEach((h,i)=>{for(const[f,als]of Object.entries(FM)){if(!cm[f]&&als.some(a=>h.includes(a)))cm[f]=i;}});
+  const tix=[];
+  for(let i=1;i<lines.length;i++){
+    const line=lines[i].trim();if(!line)continue;
+    const cols=parseLine(line);const t={};
+    for(const[f,idx]of Object.entries(cm))t[f]=(cols[idx]||'').trim();
+    if(!t.category&&!t.subject)continue;
+    t.assignmentGroup=t.assignmentGroup||'';t.lastUpdatedBy=t.lastUpdatedBy||'';
+    t.raisedDateParsed=parseDate(t.raisedDate);
+    t.ageDays=t.raisedDateParsed?Math.floor((today-t.raisedDateParsed)/86400000):null;
+    t._idx=tix.length;tix.push(t);
+  }
+  return tix;
+}
+function parseLine(line){
+  const r=[];let cur='',inQ=false;
+  for(let i=0;i<line.length;i++){const c=line[i];if(c==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}else if(c===','&&!inQ){r.push(cur);cur='';}else cur+=c;}
+  r.push(cur);return r;
+}
+function parseDate(s){
+  if(!s)return null;s=s.trim();
+  let m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if(m){const d=new Date(+m[3],+m[2]-1,+m[1]);if(!isNaN(d))return d;}
+  m=s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if(m){const d=new Date(+m[1],+m[2]-1,+m[3]);if(!isNaN(d))return d;}
+  const d=new Date(s);return isNaN(d)?null:d;
+}
+
+function loadTickets(tix,fname){
+  allTickets=tix;
+  document.getElementById('fileSubtitle').textContent=fname+' · '+tix.length+' tickets';
+  document.getElementById('loadedDate').textContent=fmtDate(today);
+  document.getElementById('ticketBadge').textContent=tix.length.toLocaleString()+' tickets';
+  document.getElementById('fileOkText').innerHTML='<span class="status-ok">✓ '+tix.length.toLocaleString()+' loaded</span>';
+  popFilters(tix);
+  bucketsBuilt=false;bucketAIData={};
+  document.getElementById('bucketsWrap').innerHTML='';
+  document.getElementById('agNav').style.display='none';
+  document.getElementById('aiPanel').style.display='none';
+  document.getElementById('emptyState').style.display='none';
+  ['ticketView','ageingView','resView'].forEach(id=>document.getElementById(id).style.display='none');
+  currentTab='ticket';
+  ['ticket','ageing','resolution'].forEach(t=>document.getElementById('tab-'+t).classList.toggle('active',t==='ticket'));
+  document.getElementById('ticketView').style.display='block';
+  applyFilters();
+}
+
+function popFilters(tix){
+  const uniq=f=>[...new Set(tix.map(t=>t[f]).filter(Boolean))].sort();
+  fillSel('filterCat',uniq('category'));fillSel('filterSub',uniq('subCategory'));
+  fillSel('filterAG',uniq('assignmentGroup'));fillSel('filterStatus',uniq('status'));
+  fillSel('filterPri',uniq('priority'));fillSel('filterCircle',uniq('circle'));
+  fillSel('resCat',uniq('category'));fillSel('resSub',uniq('subCategory'));fillSel('resAG',uniq('assignmentGroup'));
+}
+function fillSel(id,opts){const s=document.getElementById(id);const f=s.options[0];s.innerHTML='';s.appendChild(f);opts.forEach(o=>{const op=document.createElement('option');op.value=o;op.textContent=o;s.appendChild(op);});}
+
+// ─── Filters ────────────────────────────────────────────────────────────────
+function applyFilters(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  const fc=document.getElementById('filterCat').value,fs=document.getElementById('filterSub').value;
+  const fa=document.getElementById('filterAG').value,fst=document.getElementById('filterStatus').value;
+  const fp=document.getElementById('filterPri').value,fcr=document.getElementById('filterCircle').value;
+  filteredTickets=allTickets.filter(t=>{
+    if(fc&&t.category!==fc)return false;if(fs&&t.subCategory!==fs)return false;
+    if(fa&&t.assignmentGroup!==fa)return false;if(fst&&t.status!==fst)return false;
+    if(fp&&t.priority!==fp)return false;if(fcr&&t.circle!==fcr)return false;
+    if(q){const h=(t.requestNo+t.empName+t.subject+t.description+t.category+t.subCategory+t.assignmentGroup).toLowerCase();if(!h.includes(q))return false;}
+    return true;
+  });
+  doSort();
+  document.getElementById('showingCount').textContent='Showing '+filteredTickets.length.toLocaleString()+' of '+allTickets.length.toLocaleString();
+  currentPage=1;renderChips();renderCurrentTab();
+}
+function clearAllFilters(){
+  ['filterCat','filterSub','filterAG','filterStatus','filterPri','filterCircle'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('searchInput').value='';applyFilters();
+}
+function renderChips(){
+  const defs=[{id:'filterCat',l:'Cat'},{id:'filterSub',l:'Sub'},{id:'filterAG',l:'Group'},{id:'filterStatus',l:'Status'},{id:'filterPri',l:'Priority'},{id:'filterCircle',l:'Circle'}];
+  const active=defs.filter(d=>document.getElementById(d.id).value);
+  const w=document.getElementById('activeChips');
+  if(!active.length){w.style.display='none';return;}
+  w.style.display='flex';
+  w.innerHTML=active.map(d=>`<span class="chip">${d.l}: ${esc(document.getElementById(d.id).value)} <span class="chip-x" onclick="clearF('${d.id}')">×</span></span>`).join('');
+}
+function clearF(id){document.getElementById(id).value='';applyFilters();}
+
+// ─── Sort ───────────────────────────────────────────────────────────────────
+function sortTable(col){
+  if(sortCol===col)sortDir*=-1;else{sortCol=col;sortDir=1;}doSort();
+  document.querySelectorAll('.ticket-table th').forEach(th=>{
+    th.classList.remove('sort-asc','sort-desc');if(th.dataset.col===col)th.classList.add(sortDir===1?'sort-asc':'sort-desc');
+    const ic=th.querySelector('.sort-icon');if(ic)ic.textContent=th.dataset.col===col?(sortDir===1?'↑':'↓'):'⇅';
+  });renderTicketTable();
+}
+function doSort(){
+  if(!sortCol)return;
+  filteredTickets.sort((a,b)=>{
+    let va=a[sortCol],vb=b[sortCol];
+    if(sortCol==='ageDays'){va=va??-1;vb=vb??-1;return(va-vb)*sortDir;}
+    return String(va||'').localeCompare(String(vb||''))*sortDir;
+  });
+}
+
+// ─── Tab ────────────────────────────────────────────────────────────────────
+function switchTab(tab){
+  currentTab=tab;
+  ['ticket','ageing','resolution'].forEach(t=>document.getElementById('tab-'+t).classList.toggle('active',t===tab));
+  document.getElementById('ticketView').style.display=tab==='ticket'?'block':'none';
+  document.getElementById('ageingView').style.display=tab==='ageing'?'block':'none';
+  document.getElementById('resView').style.display=tab==='resolution'?'block':'none';
+  if(!allTickets.length)return;renderCurrentTab();
+}
+function renderCurrentTab(){
+  if(currentTab==='ticket')renderTicketView();
+  else if(currentTab==='ageing')renderAgeing();
+  else if(currentTab==='resolution')renderResolution();
+}
+
+// ─── Ticket View ─────────────────────────────────────────────────────────────
+function renderTicketView(){renderCatCards();renderSubcatCards();renderStatusAnalysis();renderTicketTable();}
+
+function renderCatCards(){
+  const counts={};filteredTickets.forEach(t=>{const k=t.category||'Unknown';counts[k]=(counts[k]||0)+1;});
+  const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);const total=filteredTickets.length;
+  const activeCat=document.getElementById('filterCat').value;
+  let h=`<div class="cat-card all-card${!activeCat?' cat-active':''}" onclick="setByCat('')">
+    <div class="cat-count cc-red">${total.toLocaleString()}</div><div class="cat-name">All categories</div>
+    <div class="cat-bar"><div class="cat-bar-fill cf-red" style="width:100%"></div></div></div>`;
+  sorted.forEach(([cat,ct],i)=>{
+    const c=CAT_COLORS[i%CAT_COLORS.length];const pct=Math.max(1,(ct/total*100).toFixed(0));
+    h+=`<div class="cat-card${activeCat===cat?' cat-active':''}" onclick="setByCat('${esca(cat)}')">
+      <div class="cat-count cc-${c}">${ct.toLocaleString()}</div><div class="cat-name">${esc(cat)}</div>
+      <div class="cat-bar"><div class="cat-bar-fill cf-${c}" style="width:${pct}%"></div></div></div>`;
+  });
+  document.getElementById('catGrid').innerHTML=h;
+}
+function setByCat(cat){document.getElementById('filterCat').value=cat;document.getElementById('filterSub').value='';applyFilters();}
+
+function renderSubcatCards(){
+  const cat=document.getElementById('filterCat').value;const activeSub=document.getElementById('filterSub').value;
+  document.getElementById('subcatCatLabel').textContent=cat||'All Categories';
+  const counts={},ages={},catOf={},agTiers={};
+  filteredTickets.forEach(t=>{
+    const k=t.subCategory||'Unknown';counts[k]=(counts[k]||0)+1;catOf[k]=t.category;
+    if(!ages[k])ages[k]=[];if(t.ageDays!==null)ages[k].push(t.ageDays);
+    if(!agTiers[k])agTiers[k]={};const tier=agTier(t.assignmentGroup);agTiers[k][tier]=(agTiers[k][tier]||0)+1;
+  });
+  const total=filteredTickets.length;const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,32);
+  document.getElementById('subcatCount').textContent=`(${Object.keys(counts).length} sub-categories)`;
+  let h='';
+  sorted.forEach(([sub,ct],i)=>{
+    const c=CAT_COLORS[i%CAT_COLORS.length];const pct=(ct/total*100).toFixed(1);
+    const a=ages[sub]||[];const avg=a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):0;const ov30=a.filter(x=>x>30).length;
+    const tierH=buildTiers(agTiers[sub]||{});
+    h+=`<div class="subcat-card${activeSub===sub?' subcat-active':''}" onclick="setBySub('${esca(sub)}')">
+      <div class="subcat-header">
+        <div><div class="subcat-name">${esc(sub)}</div><div class="subcat-cat cc-${c}">${esc(catOf[sub]||'')}</div></div>
+        <div class="subcat-count cc-${c}">${ct.toLocaleString()}</div>
+      </div>
+      <div class="subcat-meta"><span class="pct">${pct}%</span><span>avg ${avg}d</span>${ov30>0?`<span class="aged">${ov30} &gt;30d</span>`:''}</div>
+      ${tierH}
+      <div class="subcat-bar"><div class="subcat-bar-fill cf-${c}" style="width:${pct}%"></div></div>
+    </div>`;
+  });
+  document.getElementById('subcatGrid').innerHTML=h||'<div class="no-data">No sub-categories</div>';
+}
+function setBySub(sub){
+  document.getElementById('filterSub').value=sub;applyFilters();
+  setTimeout(()=>document.getElementById('statusAnalysis').scrollIntoView({behavior:'smooth',block:'start'}),120);
+}
+
+// ─── Status Quick Analysis ───────────────────────────────────────────────────
+function renderStatusAnalysis(){
+  const activeSub=document.getElementById('filterSub').value;
+  const sa=document.getElementById('statusAnalysis');
+  if(!activeSub){sa.style.display='none';return;}
+  // count by status
+  const counts={};filteredTickets.forEach(t=>{const k=t.status||'Unknown';counts[k]=(counts[k]||0)+1;});
+  const total=filteredTickets.length;if(!total){sa.style.display='none';return;}
+  const activeStatus=document.getElementById('filterStatus').value;
+  const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const palette=['#2563eb','#16a34a','#d97706','#7c3aed','#ea580c','#0891b2','#db2777','#475569'];
+  const bgPalette=['#dbeafe','#dcfce7','#fef9c3','#f3e8ff','#ffedd5','#ecfeff','#fce7f3','#f1f5f9'];
+  // Build bar segments
+  const barSegs=sorted.map(([ s,ct],i)=>{
+    const pct=(ct/total*100).toFixed(1);
+    const col=palette[i%palette.length];
+    return`<div class="sa-bar-seg" style="width:${pct}%;background:${col}" title="${esc(s)}: ${ct} (${pct}%)"></div>`;
+  }).join('');
+  // Build cards
+  const cards=sorted.map(([s,ct],i)=>{
+    const pct=(ct/total*100).toFixed(1);
+    const col=palette[i%palette.length];const bg=bgPalette[i%bgPalette.length];
+    const isActive=activeStatus===s;
+    return`<div class="sa-card${isActive?' sa-active':''}" onclick="filterByStatus('${esca(s)}')" style="border-color:${isActive?col:''};background:${isActive?bg:''}" >
+      <div class="sa-count" style="color:${col}">${ct}</div>
+      <div class="sa-label">${esc(s)}</div>
+      <div class="sa-pct">${pct}%</div>
+    </div>`;
+  }).join('');
+  sa.innerHTML=`<div class="status-analysis">
+    <div class="sa-header">
+      <div><div class="sa-title">📊 Status Breakdown — ${esc(activeSub)}</div><div class="sa-sub">${total} tickets · click a status to filter</div></div>
+      ${activeStatus?`<button class="btn btn-outline btn-sm" onclick="filterByStatus('')">Clear Status Filter</button>`:''}
+    </div>
+    <div class="sa-bar-row">${barSegs}</div>
+    <div class="sa-cards" style="margin-top:10px">${cards}</div>
+  </div>`;
+  sa.style.display='block';
+}
+function filterByStatus(s){
+  document.getElementById('filterStatus').value=s;
+  applyFilters();
+  setTimeout(()=>document.getElementById('tblWrap').scrollIntoView({behavior:'smooth',block:'start'}),120);
+}
+
+// ─── Ticket Table ────────────────────────────────────────────────────────────
+function renderTicketTable(){
+  const start=(currentPage-1)*PAGE;const rows=filteredTickets.slice(start,start+PAGE);
+  document.getElementById('tblCount').textContent=`(${filteredTickets.length.toLocaleString()} tickets)`;
+  let h='';
+  rows.forEach(t=>{
+    const ac=t.ageDays===null?'':t.ageDays<=7?'age-ok':t.ageDays<=15?'age-warn':t.ageDays<=30?'age-bad':'age-critical';
+    h+=`<tr><td class="td-req">${esc(t.requestNo||'—')}</td><td>${esc(t.empName||'—')}</td>
+      <td>${esc(t.category||'—')}</td><td>${esc(t.subCategory||'—')}</td><td>${esc(t.assignmentGroup||'—')}</td>
+      <td class="td-clip" title="${esca(t.subject)}">${esc(t.subject||'—')}</td>
+      <td class="td-clip td-muted" title="${esca(t.description)}">${esc(t.description||'—')}</td>
+      <td>${t.raisedDateParsed?fmtDate(t.raisedDateParsed):esc(t.raisedDate||'—')}</td>
+      <td>${t.ageDays!==null?`<span class="age-pill ${ac}">${t.ageDays}d</span>`:'—'}</td>
+      <td><span class="priority-dot ${priColor(t.priority)}"></span>${esc(t.priority||'—')}</td>
+      <td><span class="status-pill ${stClass(t.status)}">${esc(t.status||'—')}</span></td>
+      <td>${esc(t.lastUpdatedBy||'—')}</td>
+    </tr>`;
+  });
+  document.getElementById('tblBody').innerHTML=h||'<tr><td colspan="12" class="no-data">No tickets match filters</td></tr>';
+  renderPag();
+}
+function renderPag(){
+  const pages=Math.ceil(filteredTickets.length/PAGE);if(pages<=1){document.getElementById('pagWrap').innerHTML='';return;}
+  let h=`<span class="page-info">Page ${currentPage} of ${pages}</span>`;
+  if(currentPage>1)h+=`<button class="page-btn" onclick="goPage(${currentPage-1})">‹</button>`;
+  pgRange(currentPage,pages).forEach(p=>{
+    if(p==='…')h+=`<span style="color:var(--text-muted);padding:0 4px">…</span>`;
+    else h+=`<button class="page-btn${p===currentPage?' active':''}" onclick="goPage(${p})">${p}</button>`;
+  });
+  if(currentPage<pages)h+=`<button class="page-btn" onclick="goPage(${currentPage+1})">›</button>`;
+  document.getElementById('pagWrap').innerHTML=h;
+}
+function goPage(p){currentPage=p;renderTicketTable();document.getElementById('tblWrap').scrollIntoView({behavior:'smooth'});}
+function pgRange(cur,tot){
+  if(tot<=7)return Array.from({length:tot},(_,i)=>i+1);
+  const r=[1];if(cur>3)r.push('…');
+  for(let i=Math.max(2,cur-1);i<=Math.min(tot-1,cur+1);i++)r.push(i);
+  if(cur<tot-2)r.push('…');r.push(tot);return r;
+}
+function agTier(ag){if(!ag)return'other';const u=ag.toUpperCase();if(u.includes('L1')||u.includes('LEVEL 1'))return'L1';if(u.includes('L2')||u.includes('LEVEL 2'))return'L2';if(u.includes('L3')||u.includes('LEVEL 3'))return'L3';if(u.includes(' EE')||u.startsWith('EE ')||u==='EE'||u.includes('ESCALATION'))return'EE';return'other';}
+function buildTiers(tc){const order=['L1','L2','L3','EE','other'];const has=order.filter(t=>tc[t]);if(!has.length)return'';return`<div class="ag-tier-row">${has.map(t=>`<span class="ag-tier-chip tier-${t.toLowerCase()}">${t} ${tc[t]}</span>`).join('')}</div>`;}
+
+// ─── Ageing ──────────────────────────────────────────────────────────────────
+function renderAgeing(){
+  const data={};
+  filteredTickets.forEach(t=>{
+    const k=(t.category||'Unknown')+'|'+(t.subCategory||'Unknown')+'|'+(t.assignmentGroup||'—');
+    if(!data[k])data[k]={cat:t.category||'Unknown',sub:t.subCategory||'Unknown',ag:t.assignmentGroup||'—',ages:[],tix:[],count:0};
+    data[k].count++;data[k].tix.push(t);if(t.ageDays!==null)data[k].ages.push(t.ageDays);
+  });
+  ageRows=Object.values(data).map(r=>{
+    const a=r.ages;
+    return{...r,avg:a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):0,max:a.length?Math.max(...a):0,
+      b0:r.tix.filter(t=>t.ageDays!==null&&t.ageDays<=7),
+      b1:r.tix.filter(t=>t.ageDays!==null&&t.ageDays>7&&t.ageDays<=15),
+      b2:r.tix.filter(t=>t.ageDays!==null&&t.ageDays>15&&t.ageDays<=30),
+      b3:r.tix.filter(t=>t.ageDays!==null&&t.ageDays>30)};
+  });
+  renderAgeTable();
+}
+function sortAge(col){if(ageSortCol===col)ageSortDir*=-1;else{ageSortCol=col;ageSortDir=-1;}renderAgeTable();}
+function renderAgeTable(){
+  const sorted=[...ageRows].sort((a,b)=>{
+    const col=ageSortCol;
+    if(['b0','b1','b2','b3'].includes(col))return(a[col].length-b[col].length)*ageSortDir;
+    if(['count','avg','max'].includes(col))return(a[col]-b[col])*ageSortDir;
+    return String(a[col]||'').localeCompare(String(b[col]||''))*ageSortDir;
+  });
+  let h='';
+  sorted.forEach(r=>{
+    const ac=r.avg<=7?'age-ok':r.avg<=15?'age-warn':r.avg<=30?'age-bad':'age-critical';
+    const ce=esca(r.cat),se=esca(r.sub),ae=esca(r.ag);
+    h+=`<tr>
+      <td><strong>${esc(r.cat)}</strong></td><td>${esc(r.sub)}</td><td>${esc(r.ag)}</td>
+      <td class="age-cell" onclick="showAgeDrill('${ce}','${se}','${ae}','all')" title="View all tickets"><span class="age-total">${r.count}</span></td>
+      <td class="age-cell" onclick="showAgeDrill('${ce}','${se}','${ae}','b0')" title="View 0–7d tickets"><span class="age-pill age-ok">${r.b0.length}</span></td>
+      <td class="age-cell" onclick="showAgeDrill('${ce}','${se}','${ae}','b1')" title="View 8–15d tickets"><span class="age-pill age-warn">${r.b1.length}</span></td>
+      <td class="age-cell" onclick="showAgeDrill('${ce}','${se}','${ae}','b2')" title="View 16–30d tickets"><span class="age-pill age-bad">${r.b2.length}</span></td>
+      <td class="age-cell" onclick="showAgeDrill('${ce}','${se}','${ae}','b3')" title="View >30d tickets"><span class="age-pill age-critical">${r.b3.length}</span></td>
+      <td><span class="age-pill ${ac}">${r.avg}d</span></td>
+      <td>${r.max}d</td>
+    </tr>`;
+  });
+  document.getElementById('ageBody').innerHTML=h||'<tr><td colspan="10" class="no-data">No data</td></tr>';
+  // ── Totals Footer ──
+  const tot=ageRows.reduce((acc,r)=>({count:acc.count+r.count,b0:acc.b0+r.b0.length,b1:acc.b1+r.b1.length,b2:acc.b2+r.b2.length,b3:acc.b3+r.b3.length,
+    avgSum:acc.avgSum+r.avg*r.count,maxMax:Math.max(acc.maxMax,r.max)}),{count:0,b0:0,b1:0,b2:0,b3:0,avgSum:0,maxMax:0});
+  const grandAvg=tot.count?Math.round(tot.avgSum/tot.count):0;
+  const gac=grandAvg<=7?'age-ok':grandAvg<=15?'age-warn':grandAvg<=30?'age-bad':'age-critical';
+  document.getElementById('ageFoot').innerHTML=`<tr>
+    <td colspan="3" style="font-weight:700;font-size:12px">📊 TOTAL (${ageRows.length} rows · ${filteredTickets.length.toLocaleString()} tickets)</td>
+    <td><span class="age-total">${tot.count}</span></td>
+    <td><span class="age-pill age-ok">${tot.b0}</span></td>
+    <td><span class="age-pill age-warn">${tot.b1}</span></td>
+    <td><span class="age-pill age-bad">${tot.b2}</span></td>
+    <td><span class="age-pill age-critical">${tot.b3}</span></td>
+    <td><span class="age-pill ${gac}">${grandAvg}d</span></td>
+    <td>${tot.maxMax}d</td>
+  </tr>`;
+}
+
+// ─── Ageing Drill-down (inline) ──────────────────────────────────────────────
+function showAgeDrill(cat,sub,ag,bucket){
+  const row=ageRows.find(r=>r.cat===cat&&r.sub===sub&&r.ag===ag);if(!row)return;
+  const bktMap={all:{label:'All Tickets',tix:row.tix},b0:{label:'0–7 Days',tix:row.b0},b1:{label:'8–15 Days',tix:row.b1},b2:{label:'16–30 Days',tix:row.b2},b3:{label:'&gt;30 Days',tix:row.b3}};
+  const bkt=bktMap[bucket];const tix=bkt.tix;
+  document.getElementById('adpTitle').textContent=`${cat} › ${sub}`;
+  document.getElementById('adpMeta').innerHTML=`<span class="age-pill ${bucket==='b0'?'age-ok':bucket==='b1'?'age-warn':bucket==='b2'?'age-bad':bucket==='b3'?'age-critical':'age-total'}">${bkt.label}</span>&nbsp;${esc(ag)}&nbsp;·&nbsp;${tix.length} tickets`;
+  let rows='';
+  const st=[...tix].sort((a,b)=>(b.ageDays??0)-(a.ageDays??0));
+  if(!st.length){rows='<tr><td colspan="11" class="no-data">No tickets in this bucket</td></tr>';}
+  else st.forEach(t=>{
+    const ac=t.ageDays===null?'':t.ageDays<=7?'age-ok':t.ageDays<=15?'age-warn':t.ageDays<=30?'age-bad':'age-critical';
+    rows+=`<tr><td class="td-req">${esc(t.requestNo||'—')}</td><td>${esc(t.empName||'—')}</td>
+      <td>${esc(t.category||'—')}</td><td>${esc(t.subCategory||'—')}</td><td>${esc(t.assignmentGroup||'—')}</td>
+      <td class="td-clip" title="${esca(t.subject)}">${esc(t.subject||'—')}</td>
+      <td>${t.raisedDateParsed?fmtDate(t.raisedDateParsed):esc(t.raisedDate||'—')}</td>
+      <td>${t.ageDays!==null?`<span class="age-pill ${ac}">${t.ageDays}d</span>`:'—'}</td>
+      <td><span class="priority-dot ${priColor(t.priority)}"></span>${esc(t.priority||'—')}</td>
+      <td><span class="status-pill ${stClass(t.status)}">${esc(t.status||'—')}</span></td>
+      <td>${esc(t.lastUpdatedBy||'—')}</td></tr>`;
+  });
+  document.getElementById('adpBody').innerHTML=rows;
+  const panel=document.getElementById('ageDrillPanel');panel.style.display='block';
+  panel.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function closeAgeDrill(){document.getElementById('ageDrillPanel').style.display='none';}
+
+// ─── Resolution ──────────────────────────────────────────────────────────────
+function applyResFilter(){
+  const rc=document.getElementById('resCat').value,rs=document.getElementById('resSub').value,ra=document.getElementById('resAG').value;
+  document.querySelectorAll('.ag-section').forEach(sec=>{
+    const agName=sec.dataset.agname||'';if(ra&&agName!==ra){sec.style.display='none';return;}
+    sec.style.display='';let anyVis=false;
+    sec.querySelectorAll('.bucket-card').forEach(card=>{
+      const cm=!rc||card.dataset.cat===rc;const sm=!rs||card.dataset.sub===rs;
+      card.style.display=(cm&&sm)?'':'none';if(cm&&sm)anyVis=true;
+    });
+    sec.style.display=anyVis?'':'none';
+  });
+}
+function clearResFilter(){['resCat','resSub','resAG'].forEach(id=>document.getElementById(id).value='');applyResFilter();}
+function regenBuckets(){bucketsBuilt=false;bucketAIData={};document.getElementById('bucketsWrap').innerHTML='';document.getElementById('agNav').style.display='none';renderResolution();}
+
+function renderResolution(){
+  if(bucketsBuilt)return;bucketsBuilt=true;
+  if(!apiKey){
+    document.getElementById('bucketsWrap').innerHTML=`<div class="api-prompt-box">
+      <div class="icon">🤖</div><h3>AI Provider Not Configured</h3>
+      <p>Choose Google Gemini or Groq and enter your API key to generate structured resolution guidance.</p>
+      <button class="btn btn-primary" onclick="openApiModal()">Configure AI Provider</button></div>`;
+    return;
+  }
+  runResolution();
+}
+
+async function runResolution(){
+  const hasAG=filteredTickets.some(t=>t.assignmentGroup&&t.assignmentGroup.trim());
+  const agMap={};
+  filteredTickets.forEach(t=>{
+    const ag=(t.assignmentGroup&&t.assignmentGroup.trim())?t.assignmentGroup.trim():'(Unassigned)';
+    if(!agMap[ag])agMap[ag]={name:ag,tickets:[]};agMap[ag].tickets.push(t);
+  });
+  const agList=Object.values(agMap).sort((a,b)=>b.tickets.length-a.tickets.length);
+  document.getElementById('agNav').style.display='block';
+  document.getElementById('agNavCt').textContent=`(${agList.length} groups)`;
+  document.getElementById('agPills').innerHTML=agList.map((ag,i)=>{
+    const c=AG_COLORS[i%AG_COLORS.length];
+    return`<a class="ag-pill" href="#ag-${i}" style="border-color:${c};color:${c}">${esc(ag.name)}<span class="ag-pill-ct">${ag.tickets.length}</span></a>`;
+  }).join('');
+  if(!hasAG)document.getElementById('bucketsWrap').innerHTML=`<div class="no-ag-note">⚠️ No "Assignment Group" column detected. Supported: <em>Assignment Group, Team, Resolver Group, Support Group</em></div>`;
+
+  let totalBkts=0;agList.forEach(ag=>{const s=new Set(ag.tickets.map(t=>(t.category||'')+'|'+(t.subCategory||'')));totalBkts+=Math.min(s.size,8);});
+  let done=0;document.getElementById('aiPanel').style.display='flex';
+
+  for(let gi=0;gi<agList.length;gi++){
+    const ag=agList[gi];const col=AG_COLORS[gi%AG_COLORS.length];const icon=AG_ICONS[gi%AG_ICONS.length];
+    const grps={};
+    ag.tickets.forEach(t=>{
+      const k=(t.category||'Unknown')+'|'+(t.subCategory||'Unknown');
+      if(!grps[k])grps[k]={cat:t.category||'Unknown',sub:t.subCategory||'Unknown',subjects:[],ages:[],count:0,tickets:[]};
+      grps[k].count++;grps[k].tickets.push(t);
+      if(t.subject&&grps[k].subjects.length<12)grps[k].subjects.push(t.subject.slice(0,140));
+      if(t.ageDays!==null)grps[k].ages.push(t.ageDays);
+    });
+    const subcats=Object.values(grps).sort((a,b)=>b.count-a.count).slice(0,8);
+    const ov30=ag.tickets.filter(t=>t.ageDays>30).length;
+    const vA=ag.tickets.filter(t=>t.ageDays!==null);
+    const avgA=vA.length?Math.round(vA.reduce((s,t)=>s+t.ageDays,0)/vA.length):0;
+
+    let cardsH='';
+    subcats.forEach((g,bi)=>{
+      const cc=CAT_COLORS[bi%CAT_COLORS.length];const av=g.ages.length?Math.round(g.ages.reduce((a,b)=>a+b,0)/g.ages.length):0;
+      const o30=g.ages.filter(a=>a>30).length;const ac=av<=7?'age-ok':av<=15?'age-warn':av<=30?'age-bad':'age-critical';
+      const bkey=`${gi}-${bi}`;
+      cardsH+=`<div class="bucket-card" id="bc-${bkey}" data-cat="${esca(g.cat)}" data-sub="${esca(g.sub)}" data-bkey="${bkey}">
+        <div class="bucket-hdr"><div class="bucket-title">${esc(g.sub||g.cat)}</div><span class="bucket-ct">${g.count} tickets</span></div>
+        <div class="bucket-tags"><span class="bucket-tag cc-${cc}" style="font-weight:600">${esc(g.cat)}</span>${g.sub&&g.sub!==g.cat?`<span class="bucket-tag">${esc(g.sub)}</span>`:''}</div>
+        <div class="bucket-ages"><span class="bucket-age-chip age-pill ${ac}">avg ${av}d</span>${o30>0?`<span class="bucket-age-chip age-pill age-critical">${o30} &gt;30d</span>`:''}</div>
+        <div class="ai-insights" id="ai-${bkey}"><div class="bucket-res-loading pulsing" id="ai-body-${bkey}">⏳ Generating AI insights…</div></div>
+      </div>`;
+    });
+    const isFirst=gi===0;const sec=document.createElement('div');
+    sec.className='ag-section';sec.id='ag-'+gi;sec.dataset.agname=ag.name;
+    sec.innerHTML=`
+      <div class="ag-section-hdr" onclick="toggleAg(${gi})">
+        <div class="ag-section-icon" style="background:${col}18;color:${col}">${icon}</div>
+        <div class="ag-section-info"><div class="ag-section-name">${esc(ag.name)}</div><div class="ag-section-meta">${subcats.length} sub-categories · top 8 shown</div></div>
+        <div class="ag-stats">
+          <div class="ag-stat"><div class="ag-stat-val" style="color:${col}">${ag.tickets.length}</div><div class="ag-stat-lbl">Tickets</div></div>
+          <div class="ag-stat"><div class="ag-stat-val">${avgA}d</div><div class="ag-stat-lbl">Avg Age</div></div>
+          <div class="ag-stat"><div class="ag-stat-val" style="color:${ov30>0?'#dc2626':'inherit'}">${ov30}</div><div class="ag-stat-lbl">&gt;30d</div></div>
+        </div>
+        <svg class="ag-chev ${isFirst?'open':''}" id="ag-chev-${gi}" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="ag-body ${isFirst?'open':''}" id="ag-body-${gi}"><div class="buckets-grid">${cardsH}</div></div>`;
+    document.getElementById('bucketsWrap').appendChild(sec);
+
+    for(let bi=0;bi<subcats.length;bi+=4){
+      const batch=subcats.slice(bi,bi+4);
+      const pct=Math.round((done/totalBkts)*100);
+      document.getElementById('aiBar').style.width=pct+'%';document.getElementById('aiPct').textContent=pct+'%';
+      document.getElementById('aiStatus').textContent=`"${ag.name}" — ${bi+1}–${Math.min(bi+4,subcats.length)} of ${subcats.length}`;
+      await Promise.all(batch.map(async(g,bj)=>{
+        const idx=bi+bj;const bkey=`${gi}-${idx}`;
+        const result=await getResStructured(g,ag.name);
+        bucketAIData[bkey]={...result,tickets:g.tickets};
+        renderBucketAI(bkey,g.sub||g.cat,result);
+      }));
+      done+=batch.length;
+    }
+  }
+  document.getElementById('aiBar').style.width='100%';document.getElementById('aiPct').textContent='100%';
+  document.getElementById('aiStatus').textContent=`Complete — ${agList.length} groups · ${totalBkts} buckets`;
+  setTimeout(()=>document.getElementById('aiPanel').style.display='none',3000);
+  applyResFilter();
+}
+
+function renderBucketAI(bkey,title,result){
+  const el=document.getElementById('ai-body-'+bkey);if(!el)return;
+  if(!result||!result.issues||!result.issues.length){
+    el.className='bucket-res-loading';el.textContent=result?.raw||'No issues identified.';return;
+  }
+  const issueItems=result.issues.map((iss,ii)=>`
+    <li class="ai-issue-item" id="iss-${bkey}-${ii}" onclick="toggleIssueDrill('${bkey}',${ii},'${esca(title)}')">
+      <span class="ai-issue-text">• ${esc(iss.label)}</span>
+      <span class="ai-issue-count">${iss.count} tickets</span>
+      <span class="ai-issue-arrow">▶</span>
+    </li>`).join('');
+  el.outerHTML=`
+    <div class="ai-insights-header"><span class="ai-insights-label">🔍 AI Insights — ${esc(title)}</span></div>
+    <ul class="ai-issue-list" id="ai-list-${bkey}">${issueItems}</ul>
+    ${result.recommendation?`<div class="ai-recommendation"><strong>💡 Recommendation</strong>${esc(result.recommendation)}</div>`:''}
+    <div id="drill-${bkey}" class="issue-drill"></div>`;
+}
+
+function toggleIssueDrill(bkey,ii,subcatTitle){
+  const drill=document.getElementById('drill-'+bkey);if(!drill)return;
+  const item=document.getElementById(`iss-${bkey}-${ii}`);
+  const allItems=document.querySelectorAll(`#ai-list-${bkey} .ai-issue-item`);
+  // If already open for this issue, close it
+  if(item.classList.contains('active')&&drill.classList.contains('open')){
+    item.classList.remove('active');drill.classList.remove('open');drill.innerHTML='';return;
+  }
+  allItems.forEach(el=>el.classList.remove('active'));item.classList.add('active');
+  const data=bucketAIData[bkey];if(!data||!data.tickets)return;
+  const issData=data.issues[ii];
+  // Match tickets by keyword search on subject + description
+  const kws=(issData.keywords||[issData.label]).map(k=>k.toLowerCase());
+  let matched=data.tickets.filter(t=>{
+    const hay=(t.subject+' '+t.description).toLowerCase();
+    return kws.some(k=>hay.includes(k));
+  });
+  if(!matched.length)matched=data.tickets; // fallback: show all bucket tickets
+  const sorted=[...matched].sort((a,b)=>(b.ageDays??0)-(a.ageDays??0));
+  let rows='';
+  sorted.forEach(t=>{
+    const ac=t.ageDays===null?'':t.ageDays<=7?'age-ok':t.ageDays<=15?'age-warn':t.ageDays<=30?'age-bad':'age-critical';
+    rows+=`<tr><td class="td-req">${esc(t.requestNo||'—')}</td><td>${esc(t.empName||'—')}</td>
+      <td>${esc(t.category||'—')}</td><td>${esc(t.subCategory||'—')}</td>
+      <td class="td-clip" title="${esca(t.subject)}">${esc(t.subject||'—')}</td>
+      <td>${t.raisedDateParsed?fmtDate(t.raisedDateParsed):esc(t.raisedDate||'—')}</td>
+      <td>${t.ageDays!==null?`<span class="age-pill ${ac}">${t.ageDays}d</span>`:'—'}</td>
+      <td><span class="priority-dot ${priColor(t.priority)}"></span>${esc(t.priority||'—')}</td>
+      <td><span class="status-pill ${stClass(t.status)}">${esc(t.status||'—')}</span></td>
+      <td>${esc(t.lastUpdatedBy||'—')}</td></tr>`;
+  });
+  drill.innerHTML=`
+    <div class="issue-drill-hdr">
+      <div class="issue-drill-title">📋 ${esc(issData.label)} — ${sorted.length} ticket${sorted.length!==1?'s':''} ${matched.length<data.tickets.length?'(keyword matched)':'(all bucket tickets)'}</div>
+      <button class="issue-drill-close" onclick="toggleIssueDrill('${bkey}',${ii},'${esca(subcatTitle)}')">✕</button>
+    </div>
+    <div class="issue-drill-tbl-wrap"><table class="issue-drill-tbl">
+      <thead><tr><th>Req No</th><th>Employee</th><th>Category</th><th>Sub Category</th><th>Subject</th><th>Raised Date</th><th>Age</th><th>Priority</th><th>Status</th><th>Last Updated By</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="10" class="no-data">No tickets found</td></tr>'}</tbody>
+    </table></div>`;
+  drill.classList.add('open');
+  setTimeout(()=>drill.scrollIntoView({behavior:'smooth',block:'start'}),60);
+}
+
+function toggleAg(gi){document.getElementById('ag-body-'+gi).classList.toggle('open');document.getElementById('ag-chev-'+gi).classList.toggle('open');}
+
+// ─── AI API Calls ─────────────────────────────────────────────────────────────
+async function getResStructured(group,ag){
+  const samples=group.subjects.slice(0,10).map((s,i)=>`${i+1}. ${s}`).join('\n');
+  const agPart=ag&&ag!=='(Unassigned)'?` handled by the "${ag}" team`:'';
+  const prompt=`You are an HRMS helpdesk analyst. Analyse these ticket subjects from category "${group.cat}" / sub-category "${group.sub}"${agPart} (${group.count} total tickets).
+
+Ticket subjects:
+${samples}
+
+Identify the top 3–5 distinct issue patterns. Estimate ticket counts that add up to approximately ${group.count} total.
+Also provide keywords that would match each issue in ticket subject/description text.
+
+Return ONLY valid JSON (no markdown, no code blocks, no explanation):
+{
+  "issues": [
+    {"label": "Concise issue name (3–6 words)", "count": <integer>, "keywords": ["word1","word2","word3"]},
+    ...
+  ],
+  "recommendation": "One concrete action sentence for the resolver team."
+}`;
+
+  const raw=apiProvider==='groq'?await callGroq(prompt):await callGemini(prompt);
+  try{
+    const clean=raw.replace(/```json|```/gi,'').trim();
+    const parsed=JSON.parse(clean);
+    if(parsed.issues&&Array.isArray(parsed.issues))return parsed;
+  }catch(e){}
+  return{issues:[],recommendation:'',raw};
+}
+
+async function callGemini(prompt){
+  try{
+    const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(apiKey)}`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:600,temperature:0.3}})
+    });
+    if(!resp.ok){const e=await resp.json().catch(()=>({}));return resp.status===400?'⚠️ Invalid Gemini API key.':`⚠️ Gemini error ${resp.status}: ${e.error?.message||'Unknown'}`;}
+    const data=await resp.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()||'{}';
+  }catch(e){return'{}';}
+}
+async function callGroq(prompt){
+  try{
+    const resp=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+      body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'system',content:'You are a JSON-only API. Return only valid JSON, no markdown, no explanation.'},{role:'user',content:prompt}],max_tokens:600,temperature:0.3})
+    });
+    if(!resp.ok){const e=await resp.json().catch(()=>({}));return resp.status===401?'⚠️ Invalid Groq API key.':`⚠️ Groq error ${resp.status}: ${e.error?.message||'Unknown'}`;}
+    const data=await resp.json();
+    return data.choices?.[0]?.message?.content?.trim()||'{}';
+  }catch(e){return'{}';}
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function fmtDate(d){if(!d)return'—';return d.getDate().toString().padStart(2,'0')+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getFullYear();}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function esca(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+function stClass(s){if(!s)return's-default';const l=s.toLowerCase();if(l.includes('open'))return's-open';if(l.includes('clos'))return's-closed';if(l.includes('pend'))return's-pending';if(l.includes('resolv'))return's-resolved';return's-default';}
+function priColor(p){if(!p)return'';const l=p.toLowerCase();if(l.includes('high'))return'p-high';if(l.includes('med'))return'p-medium';if(l.includes('low'))return'p-low';if(l.includes('crit'))return'p-critical';return'';}
+
+// Drag & Drop
+const dz=document.getElementById('dropZone');
+if(dz){
+  ['dragenter','dragover'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.add('drag-over');}));
+  ['dragleave','drop'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.remove('drag-over');}));
+  dz.addEventListener('drop',ev=>{ev.preventDefault();const f=ev.dataTransfer.files[0];if(f){const r=new FileReader();r.onload=e2=>{const t=parseCSV(e2.target.result);if(t.length)loadTickets(t,f.name);};r.readAsText(f);}});
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeApiModal();}});
+</script>
+</body>
+</html>
